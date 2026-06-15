@@ -2,6 +2,9 @@
 Orchestration service for query processing
 """
 
+from datetime import datetime
+from email.mime import text
+import json
 import time
 import uuid
 from typing import Optional, Dict, Any, List
@@ -107,19 +110,8 @@ class QueryService:
                 query = stored_query.get("generated_query", {})
                 logger.info(f"Cache hit for query [id={request_id}]")
             else:
-                # Step 5: Extract conditions and generate query
-                extracted_conditions = await nlp_processor.extract_conditions(request.text, collection)
-                
-                # Convert Dict[field, value] to List[Dict[field, operator, value]]
-                query_conditions = []
-                for field, value in extracted_conditions.items():
-                    query_conditions.append({
-                        "field": field,
-                        "operator": "$eq",
-                        "value": value
-                    })
-                
-                query = query_generator.build_query(query_conditions)
+                # Step 5: Extract conditions and generate query using LLM
+                query = await nlp_processor.generate_mongo_query(request.text, collection)
                 query = query_generator.sanitize_query(query)
                 
                 # Validate against schema
@@ -244,24 +236,52 @@ class QueryService:
         self.cache_misses += 1
         return None
     
-    async def _save_to_cache(self, text: str, collection: str, query: Dict[str, Any]) -> None:
+    async def _save_to_cache(self, text: str, collection: str, query: Dict[str, Any], execution_time: Optional[int] = None) -> None:
         """Save new query to cache"""
-        normalized = nlp_processor.normalize_text(text)
-        query_hash = StoredQuery.create_hash(text, collection)
+        try:
+            normalized = nlp_processor.normalize_text(text)
+            query_hash = StoredQuery.create_hash(text, collection)
+            
+            # Ensure query is not empty
+            if not query:
+                query = {}  # Empty query means get all records
         
-        stored = StoredQuery(
-            original_text=text,
-            normalized_text=normalized,
-            generated_query=query,
-            collection_name=collection,
-            query_hash=query_hash,
-            average_response_ms=0
-        )
+            # Create both object and string representations
+            query_object = query
+            query_string = json.dumps(query, default=str)  # Convert non-serializable objects
         
-        await query_repository.save_query(stored)
         
-        # Update in-memory cache
-        self.query_cache[query_hash] = stored.model_dump()
+            stored = StoredQuery(
+                original_text=text,
+                normalized_text=normalized,
+                generated_query_object=query_object,  # Store as object
+                generated_query_string=query_string,  # Store as string
+                collection_name=collection,
+                query_hash=query_hash,
+                average_response_ms=execution_time
+            )
+        
+            saved_id = await query_repository.save_query(stored)
+        
+            # Update in-memory cache
+            self.query_cache[query_hash] = {
+            "original_text": text,
+            "normalized_text": normalized,
+            "generated_query_object": query_object,
+            "generated_query_string": query_string,
+            "collection_name": collection,
+            "query_hash": query_hash,
+            "usage_count": 1,
+            "created_at": datetime.utcnow(),
+            "last_used": datetime.utcnow()
+        }
+        
+            logger.info(f"Saved query to cache with hash: {query_hash}")
+            logger.debug(f"Query object: {query_object}")
+            logger.debug(f"Query string: {query_string}")
+        
+        except Exception as e:
+            logger.error(f"Failed to save query to cache: {e}")
     
     async def _log_query(
         self,
@@ -277,19 +297,26 @@ class QueryService:
         """Log query to audit collection"""
         try:
             db = await data_repository.get_collection("query_logs")
-            await db.insert_one({
-                "request_id": request_id,
-                "timestamp": time.time(),
-                "query_text": query_text[:500],
-                "collection": collection,
-                "query": query,
-                "result_count": result_count,
-                "total_count": total_count,
-                "from_cache": from_cache,
-                "execution_time_ms": execution_time
-            })
+            
+            # Convert query to string for storage
+            query_string = json.dumps(query, default=str) if query else "{}"
+            
+            log_entry = {
+            "request_id": request_id,
+            "timestamp": datetime.utcnow(),
+            "query_text": query_text[:500],
+            "collection": collection,
+            "query_object": query,  # Store as object
+            "query_string": query_string,  # Also store as string for readability
+            "result_count": result_count,
+            "total_count": total_count,
+            "from_cache": from_cache,
+            "execution_time_ms": execution_time
+        }
+            await db.insert_one(log_entry)
+            logger.debug(f"Query logged: {request_id}")
         except Exception as e:
-            logger.error(f"Failed to log query: {e}")
+            logger.error(f"Failed to log query: {e}", exc_info=True)
     
     async def get_query_history(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get recent query history"""

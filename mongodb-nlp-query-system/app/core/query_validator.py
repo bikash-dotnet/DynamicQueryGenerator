@@ -17,6 +17,7 @@ class QuerySafetyValidator:
         (r'\bdelete\b', 'DELETE operation detected'),
         (r'\bremove\b', 'REMOVE operation detected'),
         (r'\bdrop\b', 'DROP operation detected'),
+        (r'\btruncate\b', 'TRUNCATE operation detected'),
         (r'\bupdate\b', 'UPDATE operation detected'),
         (r'\bmodify\b', 'MODIFY operation detected'),
         (r'\balter\b', 'ALTER operation detected'),
@@ -149,6 +150,21 @@ class QuerySafetyValidator:
             return "Dropping collections is not allowed. You can only query data"
         else:
             return "Please rephrase your query as a data retrieval request (find, show, list)"
+        
+    def is_read_operation(self, text: str) -> bool:
+        """Check if the query is a read operation"""
+        read_patterns = [
+            r'\b(count|sum|average|avg|min|max)\b',
+            r'\b(find|show|get|list|retrieve|display|search)\b',
+            r'\bhow many\b',
+            r'\btotal number of\b',
+            r'\bgroup by\b'
+        ]
+        
+        for pattern in read_patterns:
+            if re.search(pattern, text, re.IGNORECASE):
+                return True
+        return False
 
 
 # Singleton instance

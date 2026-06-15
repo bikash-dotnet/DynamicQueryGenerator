@@ -4,7 +4,7 @@ Request and response models for user queries
 
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator
 
 
 class UserQueryRequest(BaseModel):
@@ -52,7 +52,7 @@ class QueryResponse(BaseModel):
     query_id: Optional[str] = Field(None, description="Query ID for export")
     results: List[Dict[str, Any]] = Field(default_factory=list, description="Query results")
     total_count: int = Field(0, description="Total matching records")
-    query_used: Dict[str, Any] = Field(..., description="MongoDB query used")
+    query_used: Dict[str, Any] = Field(default_factory=dict, description="MongoDB query used")
     from_cache: bool = Field(False, description="Whether response came from cache")
     execution_time_ms: int = Field(0, description="Execution time in milliseconds")
     allow_export: bool = Field(False, description="Whether export is available")
@@ -65,6 +65,11 @@ class QueryResponse(BaseModel):
         if v < 0:
             raise ValueError("Total count cannot be negative")
         return v
+    
+    @field_serializer('query_used')
+    def serialize_query_used(self, value: Dict[str, Any]) -> Dict[str, Any]:
+        """Ensure query_used is properly serialized to JSON"""
+        return value
     
     class Config:
         json_schema_extra = {

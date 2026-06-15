@@ -2,6 +2,8 @@
 Natural Language Processing engine for query understanding
 """
 
+import os
+import json
 from pydoc import text
 import re
 from typing import Dict, Any, List, Tuple, Optional
@@ -54,10 +56,24 @@ class NLPProcessor:
             logger.warning("spaCy not installed; continuing with stub")
 
     def _init_google_adk(self):
-        """Placeholder initializer for Google ADK engine."""
-        # Google ADK integration not implemented; use stub
-        self.nlp = None
-        logger.warning("google_adk engine selected but not implemented; using stub")
+        """Initialize Google Gemini LLM."""
+        try:
+            import google.generativeai as genai
+            api_key = getattr(settings, "GEMINI_API_KEY", os.getenv("GEMINI_API_KEY"))
+            if not api_key:
+                logger.warning("GEMINI_API_KEY not found. LLM features will be disabled.")
+                self.llm_model = None
+                return
+            
+            genai.configure(api_key=api_key)
+            self.llm_model = genai.GenerativeModel('gemini-1.5-flash')
+            logger.info("Google Gemini LLM loaded successfully")
+        except ImportError:
+            self.llm_model = None
+            logger.warning("google-generativeai package not installed; continuing with regex stub")
+        except Exception as e:
+            self.llm_model = None
+            logger.error(f"Failed to initialize Gemini LLM: {e}")
     
     async def detect_intent(self, text: str) -> Tuple[Intent, float]:
         """
@@ -72,10 +88,10 @@ class NLPProcessor:
         text_lower = text.lower()
         
         # Keywords for each intent type
-        select_keywords = ['find', 'get', 'show', 'list', 'query', 'search', 'retrieve', 'fetch', 'display', 'lookup', 'select', 'where']
-        insert_keywords = ['add', 'create', 'insert', 'new', 'save', 'put', 'store', 'register']
-        update_keywords = ['update', 'edit', 'change', 'modify', 'set', 'replace', 'alter']
-        delete_keywords = ['delete', 'remove', 'drop', 'erase', 'destroy', 'kill']
+        select_keywords = ['find', 'get', 'show', 'list', 'query', 'search', 'retrieve', 'fetch', 'display', 'lookup', 'select', 'where', 'what','which', 'count','how many','total', 'sum', 'average', 'avg', 'min', 'max', 'group by']
+        insert_keywords = ['add', 'create', 'insert', 'new', 'save', 'put', 'store', 'register','make', 'append']
+        update_keywords = ['update', 'edit', 'change', 'modify', 'set', 'replace', 'alter', 'rename']
+        delete_keywords = ['delete', 'remove', 'drop', 'erase', 'destroy', 'kill', 'clear', 'truncate']
         
         # Score each intent
         scores = {
@@ -239,6 +255,51 @@ class NLPProcessor:
         else:
             return value
     
+    async def generate_mongo_query(self, text: str, collection: str) -> Dict[str, Any]:
+        """
+        Generate a MongoDB query using an LLM.
+        Returns a MongoDB query dictionary.
+        """
+        # Get schema for context
+        schema = schema_loader.get_schema(collection)
+        schema_str = json.dumps(schema.get("properties", {})) if schema else "Unknown schema"
+        
+        if hasattr(self, 'llm_model') and self.llm_model:
+            prompt = f"""
+            You are a MongoDB query generator. 
+            Given the user request and the collection schema, output ONLY a valid MongoDB query as a JSON object.
+            Do not include markdown blocks like ```json, do not include explanations. Just the raw JSON.
+            
+            User Request: "{text}"
+            Collection Schema: {schema_str}
+            
+            Example Output:
+            {{"status": "active", "age": {{"$gt": 30}}}}
+            """
+            try:
+                response = self.llm_model.generate_content(prompt)
+                response_text = response.text.strip()
+                
+                # Clean up response text if markdown is still present
+                if response_text.startswith("```json"):
+                    response_text = response_text[7:-3].strip()
+                elif response_text.startswith("```"):
+                    response_text = response_text[3:-3].strip()
+                    
+                query = json.loads(response_text)
+                logger.info(f"LLM generated query: {query}")
+                return query
+            except Exception as e:
+                logger.error(f"LLM query generation failed: {e}. Falling back to regex extraction.")
+        
+        # Fallback to basic regex extraction
+        extracted = await self.extract_conditions(text, collection)
+        query = {}
+        for field, value in extracted.items():
+            query[field] = {"$eq": value}
+        
+        logger.debug(f"Fallback generated query: {query}")
+        return query
 
     async def find_similar_query(self, text: str, threshold: float = 0.85) -> Optional[Dict[str, Any]]:
         """

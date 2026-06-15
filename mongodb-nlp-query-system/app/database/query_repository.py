@@ -6,8 +6,10 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 import hashlib
 import json
+from unittest import result
 from motor.motor_asyncio import AsyncIOMotorCollection
 from bson import ObjectId
+from pymongo import collection
 
 from app.database.mongodb_client import mongodb_client
 from app.models.query_model import StoredQuery
@@ -30,14 +32,46 @@ class QueryRepository:
         """Save a generated query to the collection"""
         collection = await self.get_collection()
         
-        query_dict = query.model_dump(exclude_none=True)
-        query_dict["created_at"] = datetime.utcnow()
-        query_dict["last_used"] = datetime.utcnow()
+        # Convert to dict for MongoDB
+        query_dict = {
+        "original_text": query.original_text,
+        "normalized_text": query.normalized_text,
+        "generated_query_object": query.generated_query_object,
+        "generated_query_string": query.generated_query_string,
+        "collection_name": query.collection_name,
+        "query_hash": query.query_hash,
+        "usage_count": query.usage_count,
+        "created_at": datetime.utcnow(),
+        "last_used": datetime.utcnow()
+        }
         
-        result = await collection.insert_one(query_dict)
-        logger.info(f"Saved query with hash: {query.query_hash}")
-        
-        return str(result.inserted_id)
+        # Check if document exists
+        existing = await collection.find_one({"query_hash": query.query_hash})
+
+        if existing:
+            # Update existing document - only increment usage_count, don't set it
+            result = await collection.update_one(
+                {"query_hash": query.query_hash},
+                {
+                    "$set": {
+                        "original_text": query.original_text,
+                        "normalized_text": query.normalized_text,
+                        "generated_query_object": query.generated_query_object,
+                        "generated_query_string": query.generated_query_string,
+                        "collection_name": query.collection_name,
+                        "last_used": datetime.utcnow()
+                    },
+                    "$inc": {"usage_count": 1}
+                }
+            )
+            logger.info(f"Updated existing query with hash: {query.query_hash}, usage_count incremented")
+            return query.query_hash
+        else:
+            # Insert new document with usage_count = 1
+            query_dict["usage_count"] = 1
+            result = await collection.insert_one(query_dict)
+            logger.info(f"Inserted new query with hash: {query.query_hash}")
+            return str(result.inserted_id)
     
     async def find_by_hash(self, query_hash: str) -> Optional[StoredQuery]:
         """Find query by its hash"""
@@ -127,6 +161,25 @@ class QueryRepository:
         logger.info(f"Deleted {result.deleted_count} old queries")
         
         return result.deleted_count
+    
+    async def find_similar_by_query_pattern(self, query_pattern: str, threshold: float = 0.85) -> Optional[StoredQuery]:
+        """
+        Find similar query by matching the JSON string pattern
+        """
+        collection = await self.get_collection()
+        
+        # Use text search on generated_query_string
+        cursor = collection.find(
+            {"$text": {"$search": query_pattern}},
+            {"score": {"$meta": "textScore"}}
+        ).sort([("score", {"$meta": "textScore"})]).limit(1)
+        
+        docs = await cursor.to_list(length=1)
+        
+        if docs and docs[0].get("score", 0) >= threshold:
+            return StoredQuery(**docs[0])
+        
+        return None
 
 
 # Create singleton instance

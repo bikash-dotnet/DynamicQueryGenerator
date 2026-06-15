@@ -111,11 +111,33 @@ async def debug_query(query_hash: str, _: None = Depends(verify_api_key)):
     if stored:
         return {
             "exists": True,
-            "query": {
-                "original_text": stored.original_text,
-                "collection": stored.collection_name,
-                "created_at": stored.created_at.isoformat() if stored.created_at else None
-            }
+            "query_hash": stored.query_hash,
+            "original_text": stored.original_text,
+            "collection_name": stored.collection_name,
+            "generated_query_object": stored.generated_query_object,
+            "generated_query_string": stored.generated_query_string,
+            "usage_count": stored.usage_count,
+            "created_at": stored.created_at.isoformat() if stored.created_at else None,
+            "last_used": stored.last_used.isoformat() if stored.last_used else None
         }
     else:
         return {"exists": False, "message": f"Query hash {query_hash} not found"}
+
+@router.get("/debug/logs")
+async def debug_logs(limit: int = 5):
+    """
+    Debug endpoint to check recent logs
+    """
+    from app.database.data_repository import data_repository
+    
+    collection = await data_repository.get_collection("query_logs")
+    cursor = collection.find().sort("timestamp", -1).limit(limit)
+    logs = await cursor.to_list(length=limit)
+    
+    # Convert ObjectId to string
+    for log in logs:
+        log["_id"] = str(log["_id"])
+        if "timestamp" in log:
+            log["timestamp"] = log["timestamp"].isoformat() if log["timestamp"] else None
+    
+    return {"logs": logs}

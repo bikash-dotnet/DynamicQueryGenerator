@@ -16,7 +16,7 @@ textblob==0.17.1
 # en-core-web-sm==3.7.1
 # NLP (Option 2: Google ADK - Cloud-based)
 # google-cloud-aiplatform==1.38.0
-# google-generativeai==0.3.2
+google-generativeai==0.3.2
 
 # ML & Similarity - compatible versions with prebuilt wheels for Python 3.14
 scikit-learn==1.9.0

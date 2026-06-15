@@ -67,22 +67,23 @@ class MongoDBClient:
     async def _create_indexes(self) -> None:
         """Create necessary indexes for collections"""
         try:
-            # user_queries collection indexes
+            if self.database is None:
+                logger.error("Cannot create indexes: database connection is None")
+                return
             user_queries = self.database["user_queries"]
             
-            # Unique index on query_hash
+            # Existing indexes
             await user_queries.create_index("query_hash", unique=True)
-            
-            # TTL index for auto-deletion after 30 days
             await user_queries.create_index("created_at", expireAfterSeconds=2592000)
-            
-            # Compound index for common queries
             await user_queries.create_index([("collection_name", 1), ("last_used", -1)])
             
-            # Text index for similarity search
-            await user_queries.create_index([("original_text", "text")])
+            # NEW: Text index on generated_query_string for similarity search
+            await user_queries.create_index([("generated_query_string", "text")])
             
-            # query_logs collection indexes
+            # NEW: Index on usage_count for popular queries
+            await user_queries.create_index([("usage_count", -1)])
+            
+            # For query_logs
             query_logs = self.database["query_logs"]
             await query_logs.create_index("timestamp")
             await query_logs.create_index([("user_ip", 1), ("timestamp", -1)])
@@ -95,13 +96,13 @@ class MongoDBClient:
     
     async def get_collection(self, name: str):
         """Get a collection by name"""
-        if not self._is_connected:
+        if not self._is_connected or self.database is None:
             raise ConnectionError("Not connected to MongoDB")
         return self.database[name]
     
     async def health_check(self) -> Dict[str, Any]:
         """Check database health"""
-        if not self._is_connected:
+        if not self._is_connected or self.client is None:
             return {"status": "disconnected", "error": "Not connected"}
         
         try:
