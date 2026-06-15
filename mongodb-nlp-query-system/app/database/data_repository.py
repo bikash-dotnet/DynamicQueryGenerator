@@ -4,13 +4,48 @@ Repository for executing queries on business data collections
 
 from typing import List, Dict, Any, Tuple, Optional
 import time
+from datetime import datetime, date
 from motor.motor_asyncio import AsyncIOMotorCollection
+from bson import ObjectId
 
 from app.database.mongodb_client import mongodb_client
 from app.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def convert_objectid_to_str(doc: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Recursively convert ObjectId and datetime to JSON serializable types
+    
+    Args:
+        doc: MongoDB document with ObjectId fields
+    
+    Returns:
+        Document with ObjectId converted to string and datetime to ISO format
+    """
+    if isinstance(doc, dict):
+        result = {}
+        for key, value in doc.items():
+            if isinstance(value, ObjectId):
+                result[key] = str(value)
+            elif isinstance(value, datetime):
+                result[key] = value.isoformat()
+            elif isinstance(value, date):
+                result[key] = value.isoformat()
+            elif isinstance(value, dict):
+                result[key] = convert_objectid_to_str(value)
+            elif isinstance(value, list):
+                result[key] = [
+                    convert_objectid_to_str(item) if isinstance(item, dict) 
+                    else (str(item) if isinstance(item, ObjectId) else item)
+                    for item in value
+                ]
+            else:
+                result[key] = value
+        return result
+    return doc
 
 
 class DataRepository:
@@ -24,7 +59,7 @@ class DataRepository:
         self, 
         collection_name: str, 
         query: Dict[str, Any], 
-        limit: int = None,
+        limit: Optional[int] = None,
         skip: int = 0
     ) -> Tuple[List[Dict[str, Any]], int]:
         """
@@ -33,29 +68,31 @@ class DataRepository:
         Returns:
             Tuple of (results list, total count)
         """
-        if limit is None:
-            limit = settings.DEFAULT_QUERY_LIMIT
-        
         start_time = time.time()
+        fetch_limit = limit if limit is not None else settings.DEFAULT_QUERY_LIMIT
         
         try:
             collection = await self.get_collection(collection_name)
             
             # Validate collection exists
-            if collection_name not in await self.get_collection_names():
-                raise ValueError(f"Collection '{collection_name}' does not exist")
+            collections = await self.get_collection_names()
+            if collection_name not in collections:
+                raise ValueError(f"Collection '{collection_name}' does not exist. Available: {collections}")
             
             # Execute count with timeout
             total_count = await self._count_with_timeout(collection, query)
             
             # Execute find with timeout and limit
-            cursor = collection.find(query).skip(skip).limit(limit)
+            cursor = collection.find(query).skip(skip).limit(fetch_limit)
             
             # Add sort if specified in query (optional)
             if "$sort" in query:
                 cursor = cursor.sort(query["$sort"])
             
-            results = await self._fetch_with_timeout(cursor, limit)
+            results = await self._fetch_with_timeout(cursor, fetch_limit)
+            
+            # Convert ObjectId to string for JSON serialization
+            results = [convert_objectid_to_str(doc) for doc in results]
             
             execution_time = (time.time() - start_time) * 1000
             logger.debug(f"Query executed in {execution_time:.2f}ms, returned {len(results)} results")
@@ -95,10 +132,13 @@ class DataRepository:
     async def get_collection_names(self) -> List[str]:
         """Get list of all collection names (excluding system collections)"""
         db = mongodb_client.database
+        if db is None:
+            return []
+        
         collections = await db.list_collection_names()
         
         # Exclude internal collections
-        exclude = ["user_queries", "query_logs", "system.indexes"]
+        exclude = ["user_queries", "query_logs", "system.indexes", "system.views"]
         return [col for col in collections if col not in exclude]
     
     async def validate_collection_exists(self, collection_name: str) -> bool:

@@ -50,10 +50,10 @@ class QueryResponse(BaseModel):
     
     success: bool = Field(..., description="Whether query succeeded")
     results: List[Dict[str, Any]] = Field(default_factory=list, description="Query results")
-    total_count: int = Field(..., description="Total matching records")
+    total_count: int = Field(0, description="Total matching records")
     query_used: Dict[str, Any] = Field(..., description="MongoDB query used")
     from_cache: bool = Field(False, description="Whether response came from cache")
-    execution_time_ms: int = Field(..., description="Execution time in milliseconds")
+    execution_time_ms: int = Field(0, description="Execution time in milliseconds")
     allow_export: bool = Field(False, description="Whether export is available")
     message: Optional[str] = Field(None, description="Additional message")
     

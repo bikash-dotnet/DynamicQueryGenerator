@@ -131,14 +131,17 @@ async function submitQuery() {
         
         const data = await response.json();
         
+        console.log('Response data:', data); // Debug log
+        
         if (data.success) {
-            currentQueryId = data.query_id;
-            currentResults = data.results;
-            currentTotalCount = data.total_count;
+            currentResults = data.results || [];
+            currentTotalCount = data.total_count || 0;
             currentPage = 1;
             
             displayResults(data);
-            showToast(`Found ${data.total_count} records. Showing ${data.results.length}`, 'success');
+            
+            const message = data.message || `Found ${currentTotalCount} records. Showing ${currentResults.length}`;
+            showToast(message, 'success');
             loadHistory(); // Refresh history
         } else {
             showToast(data.message || 'Query failed', 'error');
@@ -154,12 +157,19 @@ async function submitQuery() {
 // Display results
 function displayResults(data) {
     const resultsDiv = document.getElementById('resultsSection');
+    const results = data.results || [];
+    const totalCount = data.total_count || 0;
+    const fromCache = data.from_cache || false;
+    const allowExport = data.allow_export || (totalCount > 1);
+    const queryUsed = data.query_used || {};
+    const message = data.message || '';
     
-    if (!data.results || data.results.length === 0) {
+    if (!results || results.length === 0) {
         resultsDiv.innerHTML = `
             <div class="alert alert-info">
                 <i class="bi bi-info-circle"></i>
                 No results found. Try a different query.
+                ${message ? `<br><small class="text-muted">${escapeHtml(message)}</small>` : ''}
             </div>
         `;
         resultsDiv.style.display = 'block';
@@ -167,15 +177,15 @@ function displayResults(data) {
     }
     
     // Get columns from first result
-    const columns = Object.keys(data.results[0]);
+    const columns = Object.keys(results[0]);
     
     // Build table HTML
     let tableHtml = `
         <div class="card shadow-sm">
             <div class="card-header bg-success text-white">
                 <i class="bi bi-table"></i>
-                Results (${data.results.length} of ${data.totalCount})
-                ${data.from_cache ? '<span class="badge bg-light text-dark ms-2"><i class="bi bi-database-check"></i> From Cache</span>' : ''}
+                Results (${results.length} of ${totalCount})
+                ${fromCache ? '<span class="badge bg-light text-dark ms-2"><i class="bi bi-database-check"></i> From Cache</span>' : ''}
             </div>
             <div class="card-body">
                 <div class="table-responsive result-table">
@@ -186,7 +196,7 @@ function displayResults(data) {
                             </tr>
                         </thead>
                         <tbody>
-                            ${data.results.map(row => `
+                            ${results.map(row => `
                                 <tr>
                                     ${columns.map(col => `
                                         <td>
@@ -199,24 +209,24 @@ function displayResults(data) {
                     </table>
                 </div>
                 
-                ${data.totalCount > data.results.length ? `
+                ${totalCount > results.length ? `
                     <nav>
                         <ul class="pagination justify-content-center">
                             <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
                                 <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Previous</a>
                             </li>
                             <li class="page-item active"><span class="page-link">${currentPage}</span></li>
-                            <li class="page-item ${currentPage * pageSize >= data.totalCount ? 'disabled' : ''}">
+                            <li class="page-item ${currentPage * pageSize >= totalCount ? 'disabled' : ''}">
                                 <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Next</a>
                             </li>
                         </ul>
                     </nav>
                 ` : ''}
                 
-                ${data.allowExport ? `
+                ${allowExport ? `
                     <div class="alert alert-info mt-3">
                         <i class="bi bi-download"></i>
-                        Export all ${data.totalCount} records:
+                        Export all ${totalCount} records:
                         <button class="btn btn-sm btn-success" onclick="exportCSV()">
                             <i class="bi bi-filetype-csv"></i> CSV
                         </button>
@@ -234,6 +244,8 @@ function displayResults(data) {
                         </div>
                     </div>
                 ` : ''}
+                
+                ${message ? `<div class="alert alert-secondary mt-2"><small>${escapeHtml(message)}</small></div>` : ''}
             </div>
         </div>
     `;
@@ -253,7 +265,11 @@ function formatCellValue(value) {
     }
     
     if (typeof value === 'object') {
-        return `<pre class="mb-0 small">${escapeHtml(JSON.stringify(value, null, 2))}</pre>`;
+        try {
+            return `<pre class="mb-0 small">${escapeHtml(JSON.stringify(value, null, 2))}</pre>`;
+        } catch(e) {
+            return `<pre class="mb-0 small">${escapeHtml(String(value))}</pre>`;
+        }
     }
     
     if (typeof value === 'string' && value.length > 100) {
@@ -265,6 +281,7 @@ function formatCellValue(value) {
 
 // Escape HTML to prevent XSS
 function escapeHtml(text) {
+    if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
@@ -273,13 +290,17 @@ function escapeHtml(text) {
 // Format date
 function formatDate(dateStr) {
     if (!dateStr) return 'N/A';
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffHours = (now - date) / (1000 * 60 * 60);
-    
-    if (diffHours < 1) return 'Just now';
-    if (diffHours < 24) return `${Math.floor(diffHours)} hours ago`;
-    return `${Math.floor(diffHours / 24)} days ago`;
+    try {
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffHours = (now - date) / (1000 * 60 * 60);
+        
+        if (diffHours < 1) return 'Just now';
+        if (diffHours < 24) return `${Math.floor(diffHours)} hours ago`;
+        return `${Math.floor(diffHours / 24)} days ago`;
+    } catch(e) {
+        return 'Invalid date';
+    }
 }
 
 // Clear query input
@@ -303,65 +324,16 @@ function showHelp() {
 // Change page
 function changePage(page) {
     currentPage = page;
-    // In production, re-fetch with pagination
     submitQuery();
 }
 
 // Export functions
 async function exportCSV() {
-    if (!currentQueryId) {
-        showToast('No query results to export', 'warning');
-        return;
-    }
-    
-    showToast('Preparing CSV export...', 'info');
-    
-    try {
-        const response = await fetch(`/api/v1/export/csv/${currentQueryId}`, {
-            method: 'POST'
-        });
-        
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `export_${Date.now()}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        showToast('CSV export downloaded', 'success');
-    } catch (error) {
-        showToast('Export failed', 'error');
-        console.error('Export error:', error);
-    }
+    showToast('CSV export feature coming soon...', 'info');
 }
 
 async function exportExcel() {
-    if (!currentQueryId) {
-        showToast('No query results to export', 'warning');
-        return;
-    }
-    
-    showToast('Preparing Excel export...', 'info');
-    
-    try {
-        const response = await fetch(`/api/v1/export/excel/${currentQueryId}`, {
-            method: 'POST'
-        });
-        
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `export_${Date.now()}.xlsx`;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        showToast('Excel export downloaded', 'success');
-    } catch (error) {
-        showToast('Export failed', 'error');
-        console.error('Export error:', error);
-    }
+    showToast('Excel export feature coming soon...', 'info');
 }
 
 async function sendToEmail(format) {
@@ -372,35 +344,5 @@ async function sendToEmail(format) {
         return;
     }
     
-    if (!currentQueryId) {
-        showToast('No query results to export', 'warning');
-        return;
-    }
-    
-    showToast(`Sending ${format.toUpperCase()} to ${email}...`, 'info');
-    
-    try {
-        const response = await fetch('/api/v1/export/email', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                query_id: currentQueryId,
-                email: email,
-                format: format
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast(`Export sent to ${email}`, 'success');
-        } else {
-            showToast(data.message || 'Failed to send email', 'error');
-        }
-    } catch (error) {
-        showToast('Failed to send email', 'error');
-        console.error('Email error:', error);
-    }
+    showToast(`Email export to ${email} coming soon...`, 'info');
 }

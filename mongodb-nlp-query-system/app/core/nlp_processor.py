@@ -2,6 +2,7 @@
 Natural Language Processing engine for query understanding
 """
 
+from pydoc import text
 import re
 from typing import Dict, Any, List, Tuple, Optional
 import logging
@@ -42,7 +43,7 @@ class NLPProcessor:
         try:
             import spacy
             try:
-                self.nlp = spacy.load("en_core_web_sm")
+                self.nlp = spacy.load("en_core_web_md")
                 logger.info("spaCy loaded successfully")
             except Exception:
                 # model may not be installed
@@ -85,10 +86,11 @@ class NLPProcessor:
         }
         
         # Determine intent and confidence
-        if max(scores.values()) == 0:
+        max_score = max(scores.values())
+        if max_score == 0:
             return Intent.UNKNOWN, 0.0
         
-        intent = max(scores, key=scores.get)
+        intent = max(scores, key=lambda k: scores[k])
         confidence = scores[intent] / sum(scores.values())
         
         logger.debug(f"Detected intent: {intent} (confidence: {confidence:.2f})")
@@ -123,11 +125,44 @@ class NLPProcessor:
             return None, 0.0
         
         # Get best match
-        collection = max(matches, key=matches.get)
+        collection = max(matches, key=lambda k: matches[k])
         confidence = matches[collection] / sum(matches.values())
         
         logger.debug(f"Detected collection: {collection} (confidence: {confidence:.2f})")
         return collection, confidence
+    
+    def normalize_text(self, text: str) -> str:
+        """
+        Normalize text for similarity matching and storage
+        
+        Args:
+            text: Input text to normalize
+        
+        Returns:
+            Normalized text string
+        """
+        if not text:
+            return ""
+        
+        # Convert to lowercase
+        text = text.lower()
+        
+        # Remove punctuation (keep alphanumeric and spaces)
+        text = re.sub(r'[^\w\s]', '', text)
+        
+        # Remove extra whitespace
+        text = ' '.join(text.split())
+        
+        # Remove common stopwords (optional, can enhance similarity)
+        stopwords = {'a', 'an', 'the', 'and', 'or', 'but', 'so', 'for', 'nor', 'yet',
+                     'of', 'to', 'in', 'for', 'on', 'with', 'without', 'by', 'at',
+                     'from', 'into', 'through', 'during', 'before', 'after', 'above',
+                     'below', 'between', 'under', 'over', 'show', 'me', 'please', 'query'}
+        
+        words = text.split()
+        text = ' '.join([word for word in words if word not in stopwords])
+        
+        return text
     
     async def extract_conditions(self, text: str, collection: str) -> Dict[str, Any]:
         """
@@ -204,6 +239,55 @@ class NLPProcessor:
         else:
             return value
     
+
+    async def find_similar_query(self, text: str, threshold: float = 0.85) -> Optional[Dict[str, Any]]:
+        """
+            Find similar previously executed query using text similarity
+    
+            Args:
+            text: User's query text
+            threshold: Similarity threshold (0-1)
+    
+            Returns:
+            Similar query dict if found, None otherwise
+        """
+        from app.database.query_repository import query_repository
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.metrics.pairwise import cosine_similarity
+        import numpy as np
+        
+            # Get recent queries from database
+        recent_queries = await query_repository.get_recent_queries(limit=100)
+        
+        if not recent_queries:
+            return None
+        
+        # Normalize input text
+        normalized_input = self.normalize_text(text)
+        
+        # Prepare texts for similarity comparison
+        texts = [q.normalized_text for q in recent_queries]
+        texts.append(normalized_input)
+        
+        # Calculate TF-IDF and cosine similarity
+        try:
+            vectorizer = TfidfVectorizer().fit_transform(texts)
+            similarities = cosine_similarity(vectorizer[-1:], vectorizer[:-1]).flatten() # type: ignore
+            
+            # Find best match above threshold
+            best_idx = similarities.argmax()
+            best_score = similarities[best_idx]
+            
+            if best_score >= threshold:
+                similar_query = recent_queries[best_idx]
+                logger.info(f"Found similar query with score {best_score:.2f}: {similar_query.original_text[:50]}...")
+                return similar_query.model_dump()
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Similarity search failed: {e}")
+            return None
 
 # module-level instance
 nlp_processor = NLPProcessor()  # pyright: ignore[reportUndefinedVariable]

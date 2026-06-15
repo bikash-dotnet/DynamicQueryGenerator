@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/v1/query", tags=["queries"])
 async def verify_api_key(request: Request):
     """Verify API key if authentication is enabled"""
     if settings.ENABLE_API_KEY_AUTH:
-        api_key = request.headers.get("X-API-Key")
+        api_key = request.headers.get("X-API-Key") if request.headers else None
         if not api_key or api_key != settings.API_KEY:
             raise HTTPException(status_code=401, detail="Invalid API key")
 
@@ -74,7 +74,7 @@ async def get_collections(_: None = Depends(verify_api_key)):
                 "searchable": f.get("searchable", True),
                 "description": f.get("description", "")
             } for f in schema.get("fields", [])]
-        })
+        } if schema else {"name": collection, "fields": []})
     
     return {"success": True, "collections": result}
 
@@ -82,18 +82,20 @@ async def get_collections(_: None = Depends(verify_api_key)):
 @router.get("/explain/{collection}")
 async def explain_query(
     collection: str,
-    field: str = None,
-    value: str = None,
+    field: str | None = None,
+    value: str | None = None,
     _: None = Depends(verify_api_key)
 ):
     """
     Explain how queries are processed (for debugging)
     """
-    if not schema_loader.validate_collection_exists(collection):
+    if not schema_loader.get_schema(collection):
         raise HTTPException(status_code=404, detail=f"Collection '{collection}' not found")
     
     # This would return query explanation from MongoDB
     return {
         "success": True,
-        "message": "Query explanation endpoint. Send POST to /process with your query."
+        "message": "Query explanation endpoint. Send POST to /process with your query.",
+        "collection": collection,
+        "available_fields": schema_loader.get_searchable_fields(collection)
     }

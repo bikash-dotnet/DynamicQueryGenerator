@@ -9,7 +9,7 @@ import logging
 
 from app.models.user_request import UserQueryRequest, QueryResponse
 from app.models.query_model import StoredQuery
-from app.core.nlp_processor import nlp_processor
+from app.core.nlp_processor import nlp_processor, NLPProcessor
 from app.core.query_generator import query_generator
 from app.core.query_validator import query_safety_validator
 from app.core.schema_loader import schema_loader
@@ -105,8 +105,18 @@ class QueryService:
                 logger.info(f"Cache hit for query [id={request_id}]")
             else:
                 # Step 5: Extract conditions and generate query
-                conditions = await nlp_processor.extract_conditions(request.text, collection)
-                query = query_generator.build_query(conditions)
+                extracted_conditions = await nlp_processor.extract_conditions(request.text, collection)
+                
+                # Convert Dict[field, value] to List[Dict[field, operator, value]]
+                query_conditions = []
+                for field, value in extracted_conditions.items():
+                    query_conditions.append({
+                        "field": field,
+                        "operator": "$eq",
+                        "value": value
+                    })
+                
+                query = query_generator.build_query(query_conditions)
                 query = query_generator.sanitize_query(query)
                 
                 # Validate against schema
@@ -129,9 +139,13 @@ class QueryService:
             # Step 6: Execute query
             results, total_count = await data_repository.execute_query(
                 collection, 
-                query, 
+                query if query else {}, 
                 limit=settings.DEFAULT_QUERY_LIMIT
             )
+            
+            # Ensure total_count is an integer
+            if total_count is None:
+                total_count = 0
             
             # Step 7: Format response
             execution_time = int((time.time() - start_time) * 1000)
@@ -147,7 +161,7 @@ class QueryService:
                 from_cache=from_cache,
                 execution_time=execution_time
             )
-            
+            logger.info(f"Response - success: {True}, total_count: {total_count}, results_count: {len(results)}")
             return QueryResponse(
                 success=True,
                 results=results,
@@ -186,25 +200,39 @@ class QueryService:
     
     async def _check_cache(self, text: str, collection: str) -> Optional[Dict[str, Any]]:
         """Check cache for similar query"""
-        # Check in-memory cache first
+        # Create cache key
         cache_key = StoredQuery.create_hash(text, collection)
+    
+        # Check in-memory cache first (safe access with .get())
         if cache_key in self.query_cache:
             self.cache_hits += 1
+            logger.debug(f"Cache hit (memory): {cache_key}")
             return self.query_cache[cache_key]
-        
-        # Check database
-        stored = await query_repository.find_by_hash(cache_key)
-        if stored:
-            self.cache_hits += 1
-            self.query_cache[cache_key] = stored.model_dump()
-            return stored.model_dump()
-        
+    
+        # Check database by exact hash
+        try:
+            stored = await query_repository.find_by_hash(cache_key)
+            if stored:
+                self.cache_hits += 1
+                self.query_cache[cache_key] = stored.model_dump()
+                logger.debug(f"Cache hit (database): {cache_key}")
+                return stored.model_dump()
+        except Exception as e:
+            logger.warning(f"Database cache check failed: {e}")
+    
         # Check similarity
-        similar = await nlp_processor.find_similar_query(text)
-        if similar:
-            self.cache_hits += 1
+        try:
+            similar = await nlp_processor.find_similar_query(text, threshold=0.85)
+            if similar:
+                self.cache_hits += 1
+                similar_hash = similar.get('query_hash')
+                if similar_hash:
+                    self.query_cache[similar_hash] = similar
+                    logger.debug(f"Cache hit (similarity): {similar_hash}")
             return similar
-        
+        except Exception as e:
+            logger.warning(f"Similarity check failed: {e}")
+    
         self.cache_misses += 1
         return None
     
@@ -218,7 +246,8 @@ class QueryService:
             normalized_text=normalized,
             generated_query=query,
             collection_name=collection,
-            query_hash=query_hash
+            query_hash=query_hash,
+            average_response_ms=0
         )
         
         await query_repository.save_query(stored)
