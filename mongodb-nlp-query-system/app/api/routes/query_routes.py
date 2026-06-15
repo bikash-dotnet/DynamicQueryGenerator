@@ -99,3 +99,23 @@ async def explain_query(
         "collection": collection,
         "available_fields": schema_loader.get_searchable_fields(collection)
     }
+
+@router.get("/debug/query/{query_hash}")
+async def debug_query(query_hash: str, _: None = Depends(verify_api_key)):
+    """
+    Debug endpoint to check if a query exists
+    """
+    from app.database.query_repository import query_repository
+    
+    stored = await query_repository.find_by_hash(query_hash)
+    if stored:
+        return {
+            "exists": True,
+            "query": {
+                "original_text": stored.original_text,
+                "collection": stored.collection_name,
+                "created_at": stored.created_at.isoformat() if stored.created_at else None
+            }
+        }
+    else:
+        return {"exists": False, "message": f"Query hash {query_hash} not found"}

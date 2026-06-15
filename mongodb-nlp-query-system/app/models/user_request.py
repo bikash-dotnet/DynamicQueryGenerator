@@ -49,6 +49,7 @@ class QueryResponse(BaseModel):
     """Query response model"""
     
     success: bool = Field(..., description="Whether query succeeded")
+    query_id: Optional[str] = Field(None, description="Query ID for export")
     results: List[Dict[str, Any]] = Field(default_factory=list, description="Query results")
     total_count: int = Field(0, description="Total matching records")
     query_used: Dict[str, Any] = Field(..., description="MongoDB query used")

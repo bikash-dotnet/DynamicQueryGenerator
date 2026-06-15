@@ -134,9 +134,13 @@ async function submitQuery() {
         console.log('Response data:', data); // Debug log
         
         if (data.success) {
+            // CRITICAL: Store the query_id for export
+            currentQueryId = data.query_id;  // This is the key fix!
             currentResults = data.results || [];
             currentTotalCount = data.total_count || 0;
             currentPage = 1;
+            
+            console.log('Query ID stored:', currentQueryId); // Debug log
             
             displayResults(data);
             
@@ -163,6 +167,9 @@ function displayResults(data) {
     const allowExport = data.allow_export || (totalCount > 1);
     const queryUsed = data.query_used || {};
     const message = data.message || '';
+    const queryId = data.query_id || currentQueryId;
+    
+    console.log('Display results - Query ID:', queryId);
     
     if (!results || results.length === 0) {
         resultsDiv.innerHTML = `
@@ -329,11 +336,97 @@ function changePage(page) {
 
 // Export functions
 async function exportCSV() {
-    showToast('CSV export feature coming soon...', 'info');
+    console.log('Export CSV - currentQueryId:', currentQueryId); // Debug log
+    if (!currentQueryId) {
+        showToast('No query results to export. Please run a query first.', 'warning');
+        return;
+    }
+    
+    showToast('Generating CSV export...', 'info');
+    
+    try {
+        const response = await fetch(`/api/v1/export/csv/${currentQueryId}`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Export failed');
+        }
+        
+        // Get filename from Content-Disposition header or use default
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = `export_${Date.now()}.csv`;
+        if (contentDisposition) {
+            const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+            if (match && match[1]) {
+                filename = match[1].replace(/['"]/g, '');
+            }
+        }
+        
+        // Download the file
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast('CSV export downloaded successfully!', 'success');
+    } catch (error) {
+        console.error('Export error:', error);
+        showToast(error.message || 'Failed to export CSV', 'error');
+    }
 }
 
 async function exportExcel() {
-    showToast('Excel export feature coming soon...', 'info');
+    console.log('Export Excel - currentQueryId:', currentQueryId); // Debug log
+    if (!currentQueryId) {
+        showToast('No query results to export. Please run a query first.', 'warning');
+        return;
+    }
+    
+    showToast('Generating Excel export...', 'info');
+    
+    try {
+        const response = await fetch(`/api/v1/export/excel/${currentQueryId}`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Export failed');
+        }
+        
+        // Get filename from Content-Disposition header
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = `export_${Date.now()}.xlsx`;
+        if (contentDisposition) {
+            const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+            if (match && match[1]) {
+                filename = match[1].replace(/['"]/g, '');
+            }
+        }
+        
+        // Download the file
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast('Excel export downloaded successfully!', 'success');
+    } catch (error) {
+        console.error('Export error:', error);
+        showToast(error.message || 'Failed to export Excel', 'error');
+    }
 }
 
 async function sendToEmail(format) {
@@ -344,5 +437,37 @@ async function sendToEmail(format) {
         return;
     }
     
-    showToast(`Email export to ${email} coming soon...`, 'info');
+    if (!currentQueryId) {
+        showToast('No query results to export. Please run a query first.', 'warning');
+        return;
+    }
+    
+    showToast(`Preparing ${format.toUpperCase()} export for ${email}...`, 'info');
+    
+    try {
+        const response = await fetch('/api/v1/export/email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query_id: currentQueryId,
+                email: email,
+                format: format
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            showToast(`Export sent to ${email}! Check your inbox.`, 'success');
+            // Clear email input
+            document.getElementById('exportEmail').value = '';
+        } else {
+            showToast(data.message || data.detail || 'Failed to send email', 'error');
+        }
+    } catch (error) {
+        console.error('Email error:', error);
+        showToast('Failed to send email. Please try again.', 'error');
+    }
 }

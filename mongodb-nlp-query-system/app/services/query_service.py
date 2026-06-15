@@ -52,6 +52,7 @@ class QueryService:
                 suggestion = query_safety_validator.get_helpful_suggestion(request.text)
                 return QueryResponse(
                     success=False,
+                    query_id=None,
                     results=[],
                     total_count=0,
                     query_used={},
@@ -68,6 +69,7 @@ class QueryService:
                 suggestion = query_safety_validator.get_helpful_suggestion(request.text)
                 return QueryResponse(
                     success=False,
+                    query_id=None,
                     results=[],
                     total_count=0,
                     query_used={},
@@ -86,6 +88,7 @@ class QueryService:
                 available = schema_loader.get_all_collections()
                 return QueryResponse(
                     success=False,
+                    query_id=None,
                     results=[],
                     total_count=0,
                     query_used={},
@@ -124,6 +127,7 @@ class QueryService:
                 if not is_valid:
                     return QueryResponse(
                         success=False,
+                        query_id=None,
                         results=[],
                         total_count=0,
                         query_used=query,
@@ -161,9 +165,11 @@ class QueryService:
                 from_cache=from_cache,
                 execution_time=execution_time
             )
+            query_hash = StoredQuery.create_hash(request.text, collection) if not from_cache else cached_query.get('query_hash')
             logger.info(f"Response - success: {True}, total_count: {total_count}, results_count: {len(results)}")
             return QueryResponse(
                 success=True,
+                query_id=query_hash,
                 results=results,
                 total_count=total_count,
                 query_used=query,
@@ -177,6 +183,7 @@ class QueryService:
             logger.error(f"Query timeout [id={request_id}]: {e}")
             return QueryResponse(
                 success=False,
+                query_id=None,
                 results=[],
                 total_count=0,
                 query_used={},
@@ -189,6 +196,7 @@ class QueryService:
             logger.error(f"Query processing failed [id={request_id}]: {e}", exc_info=True)
             return QueryResponse(
                 success=False,
+                query_id=None,
                 results=[],
                 total_count=0,
                 query_used={},
