@@ -1,0 +1,714 @@
+// ============================================
+// MongoDB NLP Query System - Sample Data
+// Collections: users, products, orders
+// ============================================
+
+// Switch to the database
+db = db.getSiblingDB('nlp_query_system');
+
+print("Starting sample data generation...");
+
+// ============================================
+// 1. USERS COLLECTION
+// ============================================
+
+print("\n📊 Creating users collection...");
+
+// Drop existing collection (optional - for clean setup)
+db.users.drop();
+
+// Create indexes for users collection
+db.users.createIndex({ "email": 1 }, { unique: true });
+db.users.createIndex({ "status": 1, "created_at": -1 });
+db.users.createIndex({ "country": 1, "city": 1 });
+db.users.createIndex({ "age": 1 });
+db.users.createIndex({ "name": "text" });
+
+// Insert users data
+db.users.insertMany([
+    {
+        name: "John Smith",
+        email: "john.smith@email.com",
+        age: 32,
+        country: "United States",
+        city: "New York",
+        status: "active",
+        created_at: ISODate("2023-01-15T10:30:00Z"),
+        last_login: ISODate("2024-06-10T14:20:00Z"),
+        phone: "+1-212-555-0101",
+        preferences: {
+            language: "en",
+            timezone: "America/New_York",
+            notifications: true
+        }
+    },
+    {
+        name: "Emma Johnson",
+        email: "emma.j@email.com",
+        age: 28,
+        country: "United Kingdom",
+        city: "London",
+        status: "active",
+        created_at: ISODate("2023-03-20T14:45:00Z"),
+        last_login: ISODate("2024-06-11T09:15:00Z"),
+        phone: "+44-20-555-0123",
+        preferences: {
+            language: "en",
+            timezone: "Europe/London",
+            notifications: true
+        }
+    },
+    {
+        name: "Rajesh Kumar",
+        email: "rajesh.k@email.com",
+        age: 45,
+        country: "India",
+        city: "Mumbai",
+        status: "active",
+        created_at: ISODate("2022-11-10T11:20:00Z"),
+        last_login: ISODate("2024-06-09T16:45:00Z"),
+        phone: "+91-22-555-0456",
+        preferences: {
+            language: "hi",
+            timezone: "Asia/Kolkata",
+            notifications: false
+        }
+    },
+    {
+        name: "Maria Garcia",
+        email: "maria.g@email.com",
+        age: 35,
+        country: "Spain",
+        city: "Madrid",
+        status: "active",
+        created_at: ISODate("2023-06-05T09:00:00Z"),
+        last_login: ISODate("2024-06-10T11:30:00Z"),
+        phone: "+34-91-555-0789",
+        preferences: {
+            language: "es",
+            timezone: "Europe/Madrid",
+            notifications: true
+        }
+    },
+    {
+        name: "Wei Zhang",
+        email: "wei.zhang@email.com",
+        age: 29,
+        country: "China",
+        city: "Shanghai",
+        status: "active",
+        created_at: ISODate("2023-08-12T08:30:00Z"),
+        last_login: ISODate("2024-06-08T22:10:00Z"),
+        phone: "+86-21-555-0321",
+        preferences: {
+            language: "zh",
+            timezone: "Asia/Shanghai",
+            notifications: false
+        }
+    },
+    {
+        name: "Carlos Rodriguez",
+        email: "carlos.r@email.com",
+        age: 41,
+        country: "Mexico",
+        city: "Mexico City",
+        status: "inactive",
+        created_at: ISODate("2022-09-18T15:15:00Z"),
+        last_login: ISODate("2024-05-15T10:20:00Z"),
+        phone: "+52-55-555-0654",
+        preferences: {
+            language: "es",
+            timezone: "America/Mexico_City",
+            notifications: true
+        }
+    },
+    {
+        name: "Sarah Wilson",
+        email: "sarah.w@email.com",
+        age: 26,
+        country: "Australia",
+        city: "Sydney",
+        status: "active",
+        created_at: ISODate("2023-10-25T13:45:00Z"),
+        last_login: ISODate("2024-06-11T08:00:00Z"),
+        phone: "+61-2-555-0987",
+        preferences: {
+            language: "en",
+            timezone: "Australia/Sydney",
+            notifications: true
+        }
+    },
+    {
+        name: "Thomas Brown",
+        email: "thomas.b@email.com",
+        age: 52,
+        country: "Canada",
+        city: "Toronto",
+        status: "suspended",
+        created_at: ISODate("2022-05-30T12:00:00Z"),
+        last_login: ISODate("2024-04-20T14:30:00Z"),
+        phone: "+1-416-555-0765",
+        preferences: {
+            language: "en",
+            timezone: "America/Toronto",
+            notifications: false
+        }
+    },
+    {
+        name: "Priya Sharma",
+        email: "priya.s@email.com",
+        age: 31,
+        country: "India",
+        city: "Bangalore",
+        status: "active",
+        created_at: ISODate("2023-12-01T10:00:00Z"),
+        last_login: ISODate("2024-06-10T18:45:00Z"),
+        phone: "+91-80-555-0543",
+        preferences: {
+            language: "en",
+            timezone: "Asia/Kolkata",
+            notifications: true
+        }
+    },
+    {
+        name: "David Lee",
+        email: "david.lee@email.com",
+        age: 38,
+        country: "United States",
+        city: "Los Angeles",
+        status: "active",
+        created_at: ISODate("2023-04-22T16:20:00Z"),
+        last_login: ISODate("2024-06-09T20:15:00Z"),
+        phone: "+1-310-555-0210",
+        preferences: {
+            language: "en",
+            timezone: "America/Los_Angeles",
+            notifications: true
+        }
+    },
+    {
+        name: "Anna Kowalski",
+        email: "anna.k@email.com",
+        age: 27,
+        country: "Poland",
+        city: "Warsaw",
+        status: "active",
+        created_at: ISODate("2024-01-08T11:30:00Z"),
+        last_login: ISODate("2024-06-10T12:00:00Z"),
+        phone: "+48-22-555-0876",
+        preferences: {
+            language: "pl",
+            timezone: "Europe/Warsaw",
+            notifications: true
+        }
+    },
+    {
+        name: "Mohammed Ali",
+        email: "mohammed.a@email.com",
+        age: 34,
+        country: "UAE",
+        city: "Dubai",
+        status: "active",
+        created_at: ISODate("2023-07-14T09:45:00Z"),
+        last_login: ISODate("2024-06-08T15:30:00Z"),
+        phone: "+971-4-555-0432",
+        preferences: {
+            language: "ar",
+            timezone: "Asia/Dubai",
+            notifications: false
+        }
+    },
+    {
+        name: "Isabella Rossi",
+        email: "isabella.r@email.com",
+        age: 23,
+        country: "Italy",
+        city: "Rome",
+        status: "active",
+        created_at: ISODate("2024-02-19T14:00:00Z"),
+        last_login: ISODate("2024-06-11T10:30:00Z"),
+        phone: "+39-06-555-0654",
+        preferences: {
+            language: "it",
+            timezone: "Europe/Rome",
+            notifications: true
+        }
+    },
+    {
+        name: "James Wilson",
+        email: "james.w@email.com",
+        age: 48,
+        country: "United Kingdom",
+        city: "Manchester",
+        status: "inactive",
+        created_at: ISODate("2022-12-03T10:15:00Z"),
+        last_login: ISODate("2024-05-01T09:00:00Z"),
+        phone: "+44-161-555-0987",
+        preferences: {
+            language: "en",
+            timezone: "Europe/London",
+            notifications: false
+        }
+    },
+    {
+        name: "Nina Petrov",
+        email: "nina.p@email.com",
+        age: 29,
+        country: "Russia",
+        city: "Moscow",
+        status: "active",
+        created_at: ISODate("2023-09-27T12:30:00Z"),
+        last_login: ISODate("2024-06-07T13:45:00Z"),
+        phone: "+7-495-555-0321",
+        preferences: {
+            language: "ru",
+            timezone: "Europe/Moscow",
+            notifications: true
+        }
+    }
+]);
+
+print(`✅ Inserted ${db.users.countDocuments()} users`);
+
+// ============================================
+// 2. PRODUCTS COLLECTION
+// ============================================
+
+print("\n📦 Creating products collection...");
+
+// Drop existing collection
+db.products.drop();
+
+// Create indexes for products collection
+db.products.createIndex({ "category": 1, "price": 1 });
+db.products.createIndex({ "brand": 1, "rating": -1 });
+db.products.createIndex({ "price": 1 });
+db.products.createIndex({ "stock": 1 });
+db.products.createIndex({ "name": "text" });
+
+// Insert products data
+db.products.insertMany([
+    {
+        name: "MacBook Pro 14",
+        category: "Electronics",
+        price: 1999.99,
+        stock: 45,
+        brand: "Apple",
+        rating: 4.8,
+        description: "14-inch MacBook Pro with M3 chip, 16GB RAM, 512GB SSD",
+        colors: ["Silver", "Space Gray"],
+        weight: 1.6,
+        created_at: ISODate("2023-11-15T10:00:00Z"),
+        updated_at: ISODate("2024-05-20T14:30:00Z"),
+        tags: ["laptop", "apple", "premium"]
+    },
+    {
+        name: "Samsung Galaxy S24",
+        category: "Electronics",
+        price: 999.99,
+        stock: 120,
+        brand: "Samsung",
+        rating: 4.6,
+        description: "Samsung Galaxy S24 5G, 8GB RAM, 256GB storage",
+        colors: ["Phantom Black", "Cream", "Violet"],
+        weight: 0.2,
+        created_at: ISODate("2024-01-20T09:00:00Z"),
+        updated_at: ISODate("2024-06-01T11:15:00Z"),
+        tags: ["phone", "samsung", "5g"]
+    },
+    {
+        name: "Sony WH-1000XM5",
+        category: "Audio",
+        price: 399.99,
+        stock: 200,
+        brand: "Sony",
+        rating: 4.9,
+        description: "Wireless Noise Canceling Headphones",
+        colors: ["Black", "Silver", "Blue"],
+        weight: 0.25,
+        created_at: ISODate("2023-10-10T14:20:00Z"),
+        updated_at: ISODate("2024-05-25T16:45:00Z"),
+        tags: ["headphones", "wireless", "noise-canceling"]
+    },
+    {
+        name: "Dell XPS 15",
+        category: "Electronics",
+        price: 1799.99,
+        stock: 30,
+        brand: "Dell",
+        rating: 4.5,
+        description: "Dell XPS 15, Intel i7, 32GB RAM, 1TB SSD",
+        colors: ["Platinum Silver"],
+        weight: 1.8,
+        created_at: ISODate("2023-09-05T11:00:00Z"),
+        updated_at: ISODate("2024-05-18T09:30:00Z"),
+        tags: ["laptop", "dell", "premium"]
+    },
+    {
+        name: "iPad Pro 12.9",
+        category: "Electronics",
+        price: 1099.99,
+        stock: 75,
+        brand: "Apple",
+        rating: 4.7,
+        description: "iPad Pro with M2 chip, 256GB storage",
+        colors: ["Space Gray", "Silver"],
+        weight: 0.68,
+        created_at: ISODate("2023-12-01T13:15:00Z"),
+        updated_at: ISODate("2024-06-05T10:00:00Z"),
+        tags: ["tablet", "apple", "pro"]
+    },
+    {
+        name: "Nike Air Max",
+        category: "Footwear",
+        price: 149.99,
+        stock: 350,
+        brand: "Nike",
+        rating: 4.4,
+        description: "Nike Air Max running shoes",
+        sizes: [7, 8, 9, 10, 11],
+        colors: ["Black/Red", "White/Blue"],
+        weight: 0.3,
+        created_at: ISODate("2024-02-14T10:30:00Z"),
+        updated_at: ISODate("2024-06-08T14:20:00Z"),
+        tags: ["shoes", "sports", "running"]
+    },
+    {
+        name: "Kindle Paperwhite",
+        category: "Books",
+        price: 139.99,
+        stock: 180,
+        brand: "Amazon",
+        rating: 4.6,
+        description: "Waterproof e-reader with 6.8-inch display",
+        colors: ["Black", "Agave Green"],
+        weight: 0.2,
+        created_at: ISODate("2023-11-20T09:45:00Z"),
+        updated_at: ISODate("2024-05-30T12:15:00Z"),
+        tags: ["ereader", "amazon", "books"]
+    },
+    {
+        name: "Logitech MX Master 3S",
+        category: "Electronics",
+        price: 99.99,
+        stock: 250,
+        brand: "Logitech",
+        rating: 4.7,
+        description: "Wireless performance mouse",
+        colors: ["Black", "White"],
+        weight: 0.14,
+        created_at: ISODate("2023-08-25T15:00:00Z"),
+        updated_at: ISODate("2024-06-02T09:45:00Z"),
+        tags: ["mouse", "wireless", "logitech"]
+    },
+    {
+        name: "Leather Jacket",
+        category: "Clothing",
+        price: 249.99,
+        stock: 85,
+        brand: "Zara",
+        rating: 4.3,
+        description: "Genuine leather bomber jacket",
+        sizes: ["S", "M", "L", "XL"],
+        colors: ["Black", "Brown"],
+        weight: 1.2,
+        created_at: ISODate("2023-10-05T12:00:00Z"),
+        updated_at: ISODate("2024-05-22T11:30:00Z"),
+        tags: ["jacket", "leather", "fashion"]
+    },
+    {
+        name: "Instant Pot Duo",
+        category: "Home & Kitchen",
+        price: 89.99,
+        stock: 120,
+        brand: "Instant",
+        rating: 4.5,
+        description: "7-in-1 electric pressure cooker",
+        colors: ["Black", "Stainless Steel"],
+        weight: 5.5,
+        created_at: ISODate("2024-01-10T08:00:00Z"),
+        updated_at: ISODate("2024-06-03T13:00:00Z"),
+        tags: ["cooker", "kitchen", "appliance"]
+    },
+    {
+        name: "Dyson V15 Detect",
+        category: "Home & Kitchen",
+        price: 699.99,
+        stock: 40,
+        brand: "Dyson",
+        rating: 4.8,
+        description: "Cordless vacuum cleaner with laser",
+        colors: ["Nickel/Blue"],
+        weight: 2.8,
+        created_at: ISODate("2023-07-30T10:30:00Z"),
+        updated_at: ISODate("2024-05-28T15:45:00Z"),
+        tags: ["vacuum", "dyson", "cordless"]
+    },
+    {
+        name: "The Silent Patient",
+        category: "Books",
+        price: 14.99,
+        stock: 500,
+        brand: "Alex Michaelides",
+        rating: 4.7,
+        description: "Psychological thriller bestseller",
+        pages: 336,
+        created_at: ISODate("2024-03-15T09:00:00Z"),
+        updated_at: ISODate("2024-06-06T10:20:00Z"),
+        tags: ["book", "thriller", "bestseller"]
+    },
+    {
+        name: "Yoga Mat",
+        category: "Sports",
+        price: 29.99,
+        stock: 300,
+        brand: "Lululemon",
+        rating: 4.2,
+        description: "Non-slip yoga mat, 5mm thickness",
+        colors: ["Purple", "Green", "Blue"],
+        weight: 1.0,
+        created_at: ISODate("2024-02-01T11:15:00Z"),
+        updated_at: ISODate("2024-06-04T16:30:00Z"),
+        tags: ["yoga", "fitness", "sports"]
+    },
+    {
+        name: "Electric Kettle",
+        category: "Home & Kitchen",
+        price: 49.99,
+        stock: 150,
+        brand: "Breville",
+        rating: 4.6,
+        description: "Stainless steel electric kettle with temperature control",
+        colors: ["Silver", "Black"],
+        weight: 1.1,
+        created_at: ISODate("2023-12-12T13:45:00Z"),
+        updated_at: ISODate("2024-06-07T09:30:00Z"),
+        tags: ["kettle", "kitchen", "electric"]
+    },
+    {
+        name: "Garmin Forerunner 955",
+        category: "Electronics",
+        price: 499.99,
+        stock: 65,
+        brand: "Garmin",
+        rating: 4.8,
+        description: "GPS running watch with solar charging",
+        colors: ["Black", "White"],
+        weight: 0.05,
+        created_at: ISODate("2023-09-14T14:00:00Z"),
+        updated_at: ISODate("2024-06-01T08:45:00Z"),
+        tags: ["watch", "gps", "fitness"]
+    }
+]);
+
+print(`✅ Inserted ${db.products.countDocuments()} products`);
+
+// ============================================
+// 3. ORDERS COLLECTION
+// ============================================
+
+print("\n📋 Creating orders collection...");
+
+// Drop existing collection
+db.orders.drop();
+
+// Create indexes for orders collection
+db.orders.createIndex({ "user_id": 1, "created_at": -1 });
+db.orders.createIndex({ "status": 1, "created_at": -1 });
+db.orders.createIndex({ "total_amount": 1 });
+db.orders.createIndex({ "created_at": -1 }, { expireAfterSeconds: 7776000 }); // 90 days TTL
+db.orders.createIndex({ "order_number": 1 }, { unique: true });
+
+// Get user IDs for reference
+const users = db.users.find({}).toArray();
+const products = db.products.find({}).toArray();
+
+// Helper function to get random item from array
+function getRandomItem(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// Helper function to get random number between min and max
+function getRandomNumber(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// Generate orders data
+const orders = [];
+const statuses = ["pending", "processing", "shipped", "delivered", "cancelled"];
+const paymentMethods = ["credit_card", "paypal", "apple_pay", "google_pay", "bank_transfer"];
+
+for (let i = 1; i <= 50; i++) {
+    const user = getRandomItem(users);
+    const numItems = getRandomNumber(1, 4);
+    const items = [];
+    let totalAmount = 0;
+    
+    for (let j = 0; j < numItems; j++) {
+        const product = getRandomItem(products);
+        const quantity = getRandomNumber(1, 3);
+        const itemTotal = product.price * quantity;
+        totalAmount += itemTotal;
+        
+        items.push({
+            product_id: product._id,
+            product_name: product.name,
+            quantity: quantity,
+            price: product.price,
+            total: itemTotal
+        });
+    }
+    
+    const status = statuses[getRandomNumber(0, statuses.length - 1)];
+    const createdDate = new Date();
+    createdDate.setDate(createdDate.getDate() - getRandomNumber(1, 90));
+    
+    const order = {
+        order_number: `ORD-${String(i).padStart(6, '0')}`,
+        user_id: user._id,
+        user_name: user.name,
+        user_email: user.email,
+        status: status,
+        total_amount: parseFloat(totalAmount.toFixed(2)),
+        items: items,
+        shipping_address: {
+            street: `${getRandomNumber(100, 999)} ${["Main St", "Oak Ave", "Maple Rd", "Pine Blvd"][getRandomNumber(0, 3)]}`,
+            city: user.city,
+            country: user.country,
+            zipcode: `${getRandomNumber(10000, 99999)}`
+        },
+        billing_address: {
+            street: `${getRandomNumber(100, 999)} ${["Main St", "Oak Ave", "Maple Rd", "Pine Blvd"][getRandomNumber(0, 3)]}`,
+            city: user.city,
+            country: user.country,
+            zipcode: `${getRandomNumber(10000, 99999)}`
+        },
+        payment_method: paymentMethods[getRandomNumber(0, paymentMethods.length - 1)],
+        created_at: createdDate,
+        updated_at: createdDate
+    };
+    
+    // Add status-specific timestamps
+    if (status === "shipped" || status === "delivered") {
+        const shippedDate = new Date(createdDate);
+        shippedDate.setDate(shippedDate.getDate() + getRandomNumber(1, 5));
+        order.shipped_at = shippedDate;
+        order.updated_at = shippedDate;
+    }
+    
+    if (status === "delivered") {
+        const deliveredDate = new Date(order.shipped_at);
+        deliveredDate.setDate(deliveredDate.getDate() + getRandomNumber(2, 7));
+        order.delivered_at = deliveredDate;
+        order.updated_at = deliveredDate;
+    }
+    
+    if (status === "cancelled") {
+        const cancelledDate = new Date(createdDate);
+        cancelledDate.setDate(cancelledDate.getDate() + getRandomNumber(1, 3));
+        order.cancelled_at = cancelledDate;
+        order.updated_at = cancelledDate;
+    }
+    
+    orders.push(order);
+}
+
+// Insert orders
+db.orders.insertMany(orders);
+print(`✅ Inserted ${db.orders.countDocuments()} orders`);
+
+// ============================================
+// 4. SAMPLE QUERIES FOR TESTING
+// ============================================
+
+print("\n📝 Sample queries for testing:");
+
+const sampleQueries = [
+    "Show me users older than 30 from India",
+    "Find active users in United States",
+    "List products under $500 with rating above 4.5",
+    "Show orders from last 30 days",
+    "Find products in Electronics category",
+    "Show me users who joined in 2023",
+    "List delivered orders from United Kingdom",
+    "Find products with stock less than 50",
+    "Show me orders by John Smith",
+    "List the most expensive products"
+];
+
+sampleQueries.forEach((query, index) => {
+    print(`${index + 1}. ${query}`);
+});
+
+// ============================================
+// 5. STATISTICS SUMMARY
+// ============================================
+
+print("\n📊 Database Statistics:");
+print("=".repeat(50));
+
+const userStats = db.users.aggregate([
+    {
+        $group: {
+            _id: "$status",
+            count: { $sum: 1 },
+            avg_age: { $avg: "$age" }
+        }
+    }
+]).toArray();
+
+print("\n👥 Users by status:");
+userStats.forEach(stat => {
+    print(`   ${stat._id}: ${stat.count} users (Avg Age: ${stat.avg_age.toFixed(1)})`);
+});
+
+const productStats = db.products.aggregate([
+    {
+        $group: {
+            _id: "$category",
+            count: { $sum: 1 },
+            avg_price: { $avg: "$price" },
+            total_stock: { $sum: "$stock" }
+        }
+    }
+]).toArray();
+
+print("\n📦 Products by category:");
+productStats.forEach(stat => {
+    print(`   ${stat._id}: ${stat.count} products (Avg: $${stat.avg_price.toFixed(2)}, Stock: ${stat.total_stock})`);
+});
+
+const orderStats = db.orders.aggregate([
+    {
+        $group: {
+            _id: "$status",
+            count: { $sum: 1 },
+            total_revenue: { $sum: "$total_amount" },
+            avg_order_value: { $avg: "$total_amount" }
+        }
+    }
+]).toArray();
+
+print("\n📋 Orders by status:");
+orderStats.forEach(stat => {
+    print(`   ${stat._id}: ${stat.count} orders (Revenue: $${stat.total_revenue.toFixed(2)}, Avg: $${stat.avg_order_value.toFixed(2)})`);
+});
+
+const recentOrders = db.orders.aggregate([
+    { $match: { status: "delivered" } },
+    { $group: {
+        _id: { $dateToString: { format: "%Y-%m", date: "$delivered_at" } },
+        count: { $sum: 1 },
+        revenue: { $sum: "$total_amount" }
+    }},
+    { $sort: { _id: -1 } },
+    { $limit: 3 }
+]).toArray();
+
+print("\n💰 Recent monthly revenue:");
+recentOrders.forEach(month => {
+    print(`   ${month._id}: ${month.count} orders, $${month.revenue.toFixed(2)}`);
+});
+
+print("\n✅ Sample data generation completed successfully!");
+print("=".repeat(50));
