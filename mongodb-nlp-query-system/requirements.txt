@@ -3,26 +3,28 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 
-# Database
-motor==3.3.2
-pymongo==4.5.0
+# Database - use versions with Python 3.14 wheels
+motor==3.5.0
+pymongo==4.8.0
 redis==5.0.1
 
-# NLP (Option 1: spaCy - Free, local)
-spacy==3.7.2
+# NLP (Option 1: spaCy - Free, local) - use newer version with cp314 wheel
+spacy==3.8.13
 textblob==0.17.1
 
+# Language model (optional, can be installed separately)
+en-core-web-sm==3.7.1
 # NLP (Option 2: Google ADK - Cloud-based)
 # google-cloud-aiplatform==1.38.0
 # google-generativeai==0.3.2
 
-# ML & Similarity
-scikit-learn==1.3.2
-numpy==1.24.3
-sentence-transformers==2.2.2
+# ML & Similarity - compatible versions with prebuilt wheels for Python 3.14
+scikit-learn==1.9.0
+numpy>=2.3.2,<3.0
+sentence-transformers==2.7.0
 
 # Export
-pandas==2.1.3
+pandas>=3.0.0,<4.0
 openpyxl==3.1.2
 xlsxwriter==3.1.9
 
@@ -32,8 +34,8 @@ sendgrid==6.10.0
 
 # Security & Utils
 python-dotenv==1.0.0
-pydantic==2.5.0
-pydantic-settings==2.1.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
