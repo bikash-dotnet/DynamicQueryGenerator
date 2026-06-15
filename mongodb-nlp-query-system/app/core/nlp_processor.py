@@ -58,6 +58,152 @@ class NLPProcessor:
         self.nlp = None
         logger.warning("google_adk engine selected but not implemented; using stub")
     
+    async def detect_intent(self, text: str) -> Tuple[Intent, float]:
+        """
+        Detect the intent (SELECT, INSERT, UPDATE, DELETE, or UNKNOWN) from user text
+        
+        Args:
+            text: User query text
+            
+        Returns:
+            Tuple of (Intent, confidence_score)
+        """
+        text_lower = text.lower()
+        
+        # Keywords for each intent type
+        select_keywords = ['find', 'get', 'show', 'list', 'query', 'search', 'retrieve', 'fetch', 'display', 'lookup', 'select', 'where']
+        insert_keywords = ['add', 'create', 'insert', 'new', 'save', 'put', 'store', 'register']
+        update_keywords = ['update', 'edit', 'change', 'modify', 'set', 'replace', 'alter']
+        delete_keywords = ['delete', 'remove', 'drop', 'erase', 'destroy', 'kill']
+        
+        # Score each intent
+        scores = {
+            Intent.SELECT: sum(1 for kw in select_keywords if kw in text_lower),
+            Intent.INSERT: sum(1 for kw in insert_keywords if kw in text_lower),
+            Intent.UPDATE: sum(1 for kw in update_keywords if kw in text_lower),
+            Intent.DELETE: sum(1 for kw in delete_keywords if kw in text_lower),
+        }
+        
+        # Determine intent and confidence
+        if max(scores.values()) == 0:
+            return Intent.UNKNOWN, 0.0
+        
+        intent = max(scores, key=scores.get)
+        confidence = scores[intent] / sum(scores.values())
+        
+        logger.debug(f"Detected intent: {intent} (confidence: {confidence:.2f})")
+        return intent, confidence
+    
+    async def detect_collection(self, text: str) -> Tuple[Optional[str], float]:
+        """
+        Detect which collection is being referenced in the query
+        
+        Args:
+            text: User query text
+            
+        Returns:
+            Tuple of (collection_name, confidence_score)
+        """
+        text_lower = text.lower()
+        all_collections = schema_loader.get_all_collections()
+        
+        # Find matches for collection names
+        matches = {}
+        for collection in all_collections:
+            collection_lower = collection.lower()
+            # Check for exact matches, plural forms, and common variations
+            if collection_lower in text_lower:
+                matches[collection] = 2.0  # Exact match
+            elif collection_lower.rstrip('s') in text_lower:  # Singular form
+                matches[collection] = 1.5
+            elif collection_lower + 's' in text_lower:  # Plural form
+                matches[collection] = 1.5
+        
+        if not matches:
+            return None, 0.0
+        
+        # Get best match
+        collection = max(matches, key=matches.get)
+        confidence = matches[collection] / sum(matches.values())
+        
+        logger.debug(f"Detected collection: {collection} (confidence: {confidence:.2f})")
+        return collection, confidence
+    
+    async def extract_conditions(self, text: str, collection: str) -> Dict[str, Any]:
+        """
+        Extract filter conditions from query text
+        
+        Args:
+            text: User query text
+            collection: Target collection name
+            
+        Returns:
+            Dictionary of query conditions (filters)
+        """
+        conditions = {}
+        
+        # Get schema for this collection
+        schema = schema_loader.get_schema(collection)
+        if not schema:
+            logger.warning(f"Schema not found for collection: {collection}")
+            return conditions
+        
+        # Extract field-value pairs from text
+        # Simple pattern: look for "field is value" or "field equals value" or "field = value"
+        text_lower = text.lower()
+        fields = schema.get("properties", {})
+        
+        for field_name in fields.keys():
+            field_lower = field_name.lower()
+            
+            # Pattern 1: "field is/equals/= value"
+            patterns = [
+                rf'\b{field_lower}\s+(?:is|equals?|=)\s+([^,\.\s]+)',
+                rf'\b{field_lower}\s*:\s*([^,\.\s]+)',
+            ]
+            
+            for pattern in patterns:
+                matches = re.findall(pattern, text_lower)
+                if matches:
+                    value = matches[0]
+                    # Try to convert to appropriate type
+                    conditions[field_name] = self._convert_value(value, fields[field_name])
+                    break
+        
+        logger.debug(f"Extracted conditions: {conditions}")
+        return conditions
+    
+    def _convert_value(self, value: str, field_schema: Dict[str, Any]) -> Any:
+        """
+        Convert string value to appropriate type based on field schema
+        
+        Args:
+            value: String value to convert
+            field_schema: Field schema defining expected type
+            
+        Returns:
+            Converted value
+        """
+        field_type = field_schema.get("type", "string")
+        
+        # Remove quotes if present
+        value = value.strip('\'"')
+        
+        if field_type == "integer":
+            try:
+                return int(value)
+            except ValueError:
+                return value
+        elif field_type == "number":
+            try:
+                return float(value)
+            except ValueError:
+                return value
+        elif field_type == "boolean":
+            return value.lower() in ['true', 'yes', '1']
+        else:
+            return value
+    
 
 # module-level instance
 nlp_processor = NLPProcessor()  # pyright: ignore[reportUndefinedVariable]
