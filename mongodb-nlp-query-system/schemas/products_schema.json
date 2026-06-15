@@ -1,0 +1,84 @@
+{
+  "collection_name": "products",
+  "description": "Product catalog and inventory",
+  "fields": [
+    {
+      "name": "_id",
+      "type": "objectid",
+      "description": "Unique product identifier",
+      "searchable": false,
+      "required": true
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "description": "Product name",
+      "searchable": true,
+      "required": true
+    },
+    {
+      "name": "category",
+      "type": "string",
+      "description": "Product category (electronics, clothing, books, etc.)",
+      "searchable": true,
+      "required": true
+    },
+    {
+      "name": "price",
+      "type": "float",
+      "description": "Product price in USD",
+      "searchable": true,
+      "required": true,
+      "validation": {"min": 0}
+    },
+    {
+      "name": "stock",
+      "type": "integer",
+      "description": "Available stock quantity",
+      "searchable": true,
+      "required": true,
+      "validation": {"min": 0}
+    },
+    {
+      "name": "description",
+      "type": "string",
+      "description": "Product description",
+      "searchable": true,
+      "required": false
+    },
+    {
+      "name": "brand",
+      "type": "string",
+      "description": "Product brand/manufacturer",
+      "searchable": true,
+      "required": false
+    },
+    {
+      "name": "rating",
+      "type": "float",
+      "description": "Average customer rating (0-5)",
+      "searchable": true,
+      "required": false,
+      "validation": {"min": 0, "max": 5}
+    },
+    {
+      "name": "created_at",
+      "type": "date",
+      "description": "Product creation timestamp",
+      "searchable": false,
+      "required": true
+    },
+    {
+      "name": "updated_at",
+      "type": "date",
+      "description": "Last update timestamp",
+      "searchable": false,
+      "required": true
+    }
+  ],
+  "indexes": [
+    {"fields": ["category", "price"]},
+    {"fields": ["brand", "rating"]},
+    {"fields": ["name"], "type": "text"}
+  ]
+}

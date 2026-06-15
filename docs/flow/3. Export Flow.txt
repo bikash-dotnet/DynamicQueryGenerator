@@ -1,0 +1,21 @@
+User clicks Export Button
+    ↓
+POST /api/export/{format}
+    ├─→ format: 'csv' or 'excel'
+    └─→ body: {query_id, email?}
+    ↓
+[Export Service]
+    ├─→ Retrieve original query from user_queries
+    ├─→ Re-execute query (without limit)
+    ├─→ Generate CSV/Excel file
+    └─→ Save temporarily
+    ↓
+If Send to Email:
+    ├─→ [Email Service]
+    ├─→ Attach file
+    ├─→ Send email
+    └─→ Clean up temp file
+    ↓
+If Download:
+    ├─→ Return FileResponse
+    └─→ Stream to browser

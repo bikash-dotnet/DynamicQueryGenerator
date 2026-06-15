@@ -1,0 +1,77 @@
+{
+  "collection_name": "users",
+  "description": "User accounts and profiles",
+  "fields": [
+    {
+      "name": "_id",
+      "type": "objectid",
+      "description": "Unique user identifier",
+      "searchable": false,
+      "required": true
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "description": "User's full name",
+      "searchable": true,
+      "required": true
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "description": "User's email address",
+      "searchable": true,
+      "required": true,
+      "unique": true
+    },
+    {
+      "name": "age",
+      "type": "integer",
+      "description": "User's age in years",
+      "searchable": true,
+      "required": false,
+      "validation": {"min": 0, "max": 150}
+    },
+    {
+      "name": "country",
+      "type": "string",
+      "description": "User's country of residence",
+      "searchable": true,
+      "required": false
+    },
+    {
+      "name": "city",
+      "type": "string",
+      "description": "User's city",
+      "searchable": true,
+      "required": false
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Account status (active, inactive, suspended)",
+      "searchable": true,
+      "required": false,
+      "enum": ["active", "inactive", "suspended"]
+    },
+    {
+      "name": "created_at",
+      "type": "date",
+      "description": "Account creation timestamp",
+      "searchable": false,
+      "required": true
+    },
+    {
+      "name": "last_login",
+      "type": "date",
+      "description": "Last login timestamp",
+      "searchable": false,
+      "required": false
+    }
+  ],
+  "indexes": [
+    {"fields": ["email"], "unique": true},
+    {"fields": ["status", "created_at"]},
+    {"fields": ["country", "city"]}
+  ]
+}

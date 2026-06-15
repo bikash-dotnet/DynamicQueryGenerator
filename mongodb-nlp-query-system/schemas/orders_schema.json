@@ -1,0 +1,102 @@
+{
+  "collection_name": "orders",
+  "description": "Customer orders and transactions",
+  "fields": [
+    {
+      "name": "_id",
+      "type": "objectid",
+      "description": "Unique order identifier",
+      "searchable": false,
+      "required": true
+    },
+    {
+      "name": "order_number",
+      "type": "string",
+      "description": "Human-readable order number",
+      "searchable": true,
+      "required": true,
+      "unique": true
+    },
+    {
+      "name": "user_id",
+      "type": "objectid",
+      "description": "Reference to user who placed order",
+      "searchable": true,
+      "required": true
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Order status (pending, processing, shipped, delivered, cancelled)",
+      "searchable": true,
+      "required": true,
+      "enum": ["pending", "processing", "shipped", "delivered", "cancelled"]
+    },
+    {
+      "name": "total_amount",
+      "type": "float",
+      "description": "Order total amount",
+      "searchable": true,
+      "required": true,
+      "validation": {"min": 0}
+    },
+    {
+      "name": "items",
+      "type": "array",
+      "description": "List of items in the order",
+      "searchable": false,
+      "required": true,
+      "items": {
+        "product_id": {"type": "objectid"},
+        "quantity": {"type": "integer"},
+        "price": {"type": "float"}
+      }
+    },
+    {
+      "name": "shipping_address",
+      "type": "object",
+      "description": "Shipping address details",
+      "searchable": false,
+      "required": true,
+      "fields": {
+        "street": {"type": "string"},
+        "city": {"type": "string"},
+        "country": {"type": "string"},
+        "zipcode": {"type": "string"}
+      }
+    },
+    {
+      "name": "payment_method",
+      "type": "string",
+      "description": "Payment method used",
+      "searchable": true,
+      "required": true
+    },
+    {
+      "name": "created_at",
+      "type": "date",
+      "description": "Order creation timestamp",
+      "searchable": true,
+      "required": true
+    },
+    {
+      "name": "shipped_at",
+      "type": "date",
+      "description": "Order shipped timestamp",
+      "searchable": true,
+      "required": false
+    },
+    {
+      "name": "delivered_at",
+      "type": "date",
+      "description": "Order delivered timestamp",
+      "searchable": true,
+      "required": false
+    }
+  ],
+  "indexes": [
+    {"fields": ["user_id", "created_at"]},
+    {"fields": ["status", "created_at"]},
+    {"fields": ["created_at"], "expireAfterSeconds": 7776000}
+  ]
+}

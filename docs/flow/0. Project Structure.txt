@@ -1,0 +1,67 @@
+mongodb-nlp-query-system/
+│
+├── app/
+│   ├── __init__.py
+│   ├── main.py                    # FastAPI application entry point
+│   ├── config.py                  # Configuration settings
+│   │
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── routes/
+│   │   │   ├── __init__.py
+│   │   │   ├── query_routes.py    # Query endpoints
+│   │   │   └── export_routes.py   # Export functionality endpoints
+│   │   └── dependencies.py         # Dependency injection
+│   │
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── nlp_processor.py       # Natural language processing
+│   │   ├── query_generator.py     # MongoDB query generation
+│   │   ├── query_validator.py     # Validate queries (prevent delete/update)
+│   │   └── schema_loader.py       # Load and parse JSON schema files
+│   │
+│   ├── database/
+│   │   ├── __init__.py
+│   │   ├── mongodb_client.py      # MongoDB connection manager
+│   │   ├── query_repository.py    # CRUD for user_queries collection
+│   │   └── data_repository.py     # CRUD for main collections
+│   │
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── query_model.py         # Pydantic models for queries
+│   │   └── user_request.py        # Request/Response models
+│   │
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── query_service.py       # Orchestrate query processing
+│   │   ├── export_service.py      # CSV/Excel export service
+│   │   └── email_service.py       # Email sending functionality
+│   │
+│   └── utils/
+│       ├── __init__.py
+│       ├── logger.py              # Logging configuration
+│       └── helpers.py             # Utility functions
+│
+├── schemas/                       # Schema JSON files location
+│   ├── users_schema.json         # Example schema for users collection
+│   ├── products_schema.json      # Example schema for products collection
+│   └── orders_schema.json        # Example schema for orders collection
+│
+├── static/
+│   ├── css/
+│   │   └── style.css             # Custom CSS
+│   └── js/
+│       └── main.js               # Frontend JavaScript
+│
+├── templates/
+│   └── index.html                # Main UI template
+│
+├── exports/                      # Temporary export files storage
+│   └── .gitkeep
+│
+├── requirements.txt              # Python dependencies
+├── .env                          # Environment variables
+├── .env.example                  # Example environment variables
+├── docker-compose.yml            # Docker setup (optional)
+├── Dockerfile                    # Docker configuration
+└── README.md                     # Project documentation

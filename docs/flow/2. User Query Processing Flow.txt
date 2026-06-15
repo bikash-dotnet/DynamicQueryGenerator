@@ -1,0 +1,63 @@
+User Input (Natural Language)
+    ↓
+[Frontend: Bootstrap UI]
+    ↓
+POST /api/query/process
+    ↓
+[API Layer: Validate Request]
+    ↓
+[Query Service]
+    ├─→ Check for DELETE/UPDATE/MODIFICATION keywords
+    │       ↓
+    │   If detected → Return denied message with explanation
+    │
+    ├─→ Search user_queries collection for similar query
+    │       ↓
+    │   If found (within similarity threshold) → Use cached query
+    │
+    └─→ If not found:
+            ↓
+        [NLP Processor]
+            ├─→ Tokenize and parse natural language
+            ├─→ Extract intent (SELECT only)
+            ├─→ Identify target collection
+            └─→ Extract filter conditions
+            ↓
+        [Schema Loader]
+            ├─→ Load appropriate collection schema
+            ├─→ Validate field existence
+            └─→ Map field types
+            ↓
+        [Query Generator]
+            ├─→ Build MongoDB find() query
+            ├─→ Apply limit: 5 (default)
+            ├─→ Add sorting if specified
+            └─→ Format projection
+            ↓
+        [Query Validator]
+            ├─→ Final safety check (no write operations)
+            └─→ Validate query structure
+            ↓
+        Save to user_queries collection
+            ├─→ Store: original_text, generated_query, timestamp, collection_name
+            └─→ Generate query hash for future lookup
+    ↓
+Execute Query against MongoDB
+    ↓
+Format Results (max 5 records)
+    ↓
+Generate Response
+    ├─→ results: data array
+    ├─→ total_count: total matching records
+    ├─→ query_used: generated query
+    ├─→ from_cache: boolean
+    └─→ allow_export: boolean (true if total_count > 1)
+    ↓
+Return to Frontend
+    ↓
+Display Results in Bootstrap Table
+    ↓
+If allow_export → Show Export Buttons
+    ├─→ Download as CSV
+    ├─→ Download as Excel
+    └─→ Send to Email

@@ -1,0 +1,13 @@
+Start Application
+    ↓
+Load Environment Variables
+    ↓
+Connect to MongoDB
+    ↓
+Load Schema JSON files from /schemas directory
+    ↓
+Initialize NLP Processor
+    ↓
+Start FastAPI Server
+    ↓
+Serve UI on Root Endpoint
